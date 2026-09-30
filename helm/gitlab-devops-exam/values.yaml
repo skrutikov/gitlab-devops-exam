@@ -1,0 +1,30 @@
+images:
+  gateway:
+    repository: baranbartu/k-api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  users:
+    repository: baranbartu/k-users
+    tag: latest
+    pullPolicy: IfNotPresent
+  orders:
+    repository: baranbartu/k-orders
+    tag: latest
+    pullPolicy: IfNotPresent
+
+gateway:
+  replicaCount: 1
+  service:
+    type: NodePort
+    port: 8000
+    nodePort: 30000
+
+users:
+  replicaCount: 1
+  service:
+    port: 8000
+
+orders:
+  replicaCount: 1
+  service:
+    port: 8000
