@@ -72,10 +72,10 @@ build_and_push:
         --namespace "$KUBE_NAMESPACE" \
         --set-string images.gateway.repository="$GATEWAY_IMAGE" \
         --set-string images.gateway.tag="$CI_COMMIT_SHORT_SHA" \
-        --set-string images.users.repository="$USERS_IMAGE" \
-        --set-string images.users.tag="$CI_COMMIT_SHORT_SHA" \
-        --set-string images.orders.repository="$ORDERS_IMAGE" \
-        --set-string images.orders.tag="$CI_COMMIT_SHORT_SHA" \
+        --set-string internalServices.users.image.repository="$USERS_IMAGE" \
+        --set-string internalServices.users.image.tag="$CI_COMMIT_SHORT_SHA" \
+        --set-string internalServices.orders.image.repository="$ORDERS_IMAGE" \
+        --set-string internalServices.orders.image.tag="$CI_COMMIT_SHORT_SHA" \
         --set gateway.service.nodePort="$NODE_PORT" \
         --wait \
         --timeout 180s
