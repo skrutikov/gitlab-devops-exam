@@ -3,14 +3,6 @@ images:
     repository: baranbartu/k-api-gateway
     tag: latest  # Default only; GitLab CI overrides this with CI_COMMIT_SHORT_SHA.
     pullPolicy: IfNotPresent  # Safe in CI because each commit uses a unique image tag.
-  users:
-    repository: baranbartu/k-users
-    tag: latest  # Default only; GitLab CI overrides this with CI_COMMIT_SHORT_SHA.
-    pullPolicy: IfNotPresent  # Safe in CI because each commit uses a unique image tag.
-  orders:
-    repository: baranbartu/k-orders
-    tag: latest  # Default only; GitLab CI overrides this with CI_COMMIT_SHORT_SHA.
-    pullPolicy: IfNotPresent  # Safe in CI because each commit uses a unique image tag.
 
 gateway:
   replicaCount: 1
@@ -24,8 +16,8 @@ internalServices:
     replicaCount: 1
     image:
       repository: baranbartu/k-users
-      tag: latest
-      pullPolicy: IfNotPresent
+      tag: latest  # Default only; GitLab CI overrides this with CI_COMMIT_SHORT_SHA.
+      pullPolicy: IfNotPresent  # Safe in CI because each commit uses a unique image tag.
     service:
       port: 8000
 
@@ -33,7 +25,7 @@ internalServices:
     replicaCount: 1
     image:
       repository: baranbartu/k-orders
-      tag: latest
-      pullPolicy: IfNotPresent
+      tag: latest  # Default only; GitLab CI overrides this with CI_COMMIT_SHORT_SHA.
+      pullPolicy: IfNotPresent  # Safe in CI because each commit uses a unique image tag.
     service:
       port: 8000
