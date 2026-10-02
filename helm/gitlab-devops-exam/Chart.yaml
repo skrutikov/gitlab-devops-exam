@@ -1,0 +1,5 @@
+apiVersion: v2
+name: gitlab-devops-exam
+description: Helm chart for the GitLab DevOps exam microservices
+type: application
+version: 0.1.0

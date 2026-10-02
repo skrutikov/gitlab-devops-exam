@@ -1,0 +1,126 @@
+stages:
+  - test
+  - integration_test
+  - build
+  - deploy_dev
+  - deploy_qa
+  - deploy_staging
+  - deploy_prod
+
+variables:
+  GATEWAY_IMAGE: "$DOCKERHUB_USERNAME/gitlab-devops-exam-gateway"
+  USERS_IMAGE: "$DOCKERHUB_USERNAME/gitlab-devops-exam-users"
+  ORDERS_IMAGE: "$DOCKERHUB_USERNAME/gitlab-devops-exam-orders"
+
+test_users:
+  stage: test
+  script:
+    # Run the existing users service tests with the same Python version as the application's Dockerfile.
+    - |
+      docker run --rm \
+        -v "$CI_PROJECT_DIR/users:/app" \
+        -w /app \
+        python:3.7.7 \
+        sh -c "
+          pip install --no-cache-dir -r requirements.txt &&
+          python tests/auth.py &&
+          python tests/fake_db.py
+        "
+
+helm_lint:
+  stage: test
+  script:
+    - helm lint helm/gitlab-devops-exam
+
+integration_test:
+  stage: integration_test
+  script:
+    - docker compose down -v --remove-orphans || true
+    - docker compose up -d --build
+    - |
+      for attempt in $(seq 1 20); do
+        if curl --fail --silent http://localhost:8001/docs >/dev/null; then
+          exit 0
+        fi
+        sleep 2
+      done
+      exit 1
+  after_script:
+    - docker compose down -v --remove-orphans || true
+
+build_and_push:
+  stage: build
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    - docker build -t "$GATEWAY_IMAGE:$CI_COMMIT_SHORT_SHA" gateway
+    - docker build -t "$USERS_IMAGE:$CI_COMMIT_SHORT_SHA" users
+    - docker build -t "$ORDERS_IMAGE:$CI_COMMIT_SHORT_SHA" orders
+    - docker push "$GATEWAY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$USERS_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$ORDERS_IMAGE:$CI_COMMIT_SHORT_SHA"
+  after_script:
+    - docker logout || true
+
+.deploy:
+  before_script:
+    - export KUBECONFIG="$KUBE_CONFIG"
+    - kubectl apply -f k8s/namespaces.yaml
+  script:
+    - |
+      helm upgrade --install gitlab-devops-exam helm/gitlab-devops-exam \
+        --namespace "$KUBE_NAMESPACE" \
+        --set-string images.gateway.repository="$GATEWAY_IMAGE" \
+        --set-string images.gateway.tag="$CI_COMMIT_SHORT_SHA" \
+        --set-string internalServices.users.image.repository="$USERS_IMAGE" \
+        --set-string internalServices.users.image.tag="$CI_COMMIT_SHORT_SHA" \
+        --set-string internalServices.orders.image.repository="$ORDERS_IMAGE" \
+        --set-string internalServices.orders.image.tag="$CI_COMMIT_SHORT_SHA" \
+        --set gateway.service.nodePort="$NODE_PORT" \
+        --wait \
+        --timeout 180s
+
+deploy_dev:
+  extends: .deploy
+  stage: deploy_dev
+  variables:
+    KUBE_NAMESPACE: dev
+    NODE_PORT: "30000"
+  environment:
+    name: dev
+    url: "http://$DEPLOY_HOST:30000"
+
+deploy_qa:
+  extends: .deploy
+  stage: deploy_qa
+  variables:
+    KUBE_NAMESPACE: qa
+    NODE_PORT: "30001"
+  environment:
+    name: QA
+    url: "http://$DEPLOY_HOST:30001"
+
+deploy_staging:
+  extends: .deploy
+  stage: deploy_staging
+  variables:
+    KUBE_NAMESPACE: staging
+    NODE_PORT: "30002"
+  environment:
+    name: staging
+    url: "http://$DEPLOY_HOST:30002"
+
+deploy_prod:
+  extends: .deploy
+  stage: deploy_prod
+  variables:
+    KUBE_NAMESPACE: prod
+    NODE_PORT: "30003"
+  environment:
+    name: prod
+    url: "http://$DEPLOY_HOST:30003"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - when: never
