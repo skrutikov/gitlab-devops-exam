@@ -7,6 +7,10 @@ stages:
   - deploy_staging
   - deploy_prod
 
+default:
+  tags:
+    - exam-shell
+
 variables:
   GATEWAY_IMAGE: "$DOCKERHUB_USERNAME/gitlab-devops-exam-gateway"
   USERS_IMAGE: "$DOCKERHUB_USERNAME/gitlab-devops-exam-users"
@@ -18,13 +22,14 @@ test_users:
     # Run the existing users service tests with the same Python version as the application's Dockerfile.
     - |
       docker run --rm \
+        -e PYTHONDONTWRITEBYTECODE=1 \
         -v "$CI_PROJECT_DIR/users:/app" \
         -w /app \
         python:3.7.7 \
         sh -c "
           pip install --no-cache-dir -r requirements.txt &&
-          python tests/auth.py &&
-          python tests/fake_db.py
+          python -m tests.auth &&
+          python -m tests.fake_db
         "
 
 helm_lint:
